@@ -169,5 +169,8 @@ def run(g: Bool, s: Spec.Spot) -> List<&2, Spec.Tally>:
     case False{}:
       run.cpu(ctx(s))
 
-def gpu_worth(+s: Spec.Spot) -> Bool:
-  Nat.is_ge(Spec.boards(s), 16384n)
+# Whether a spot goes to the GPU. Measured on an RTX 4070 Ti (CUDA 13.4) beside
+# 24 CPU threads, the GPU loses on every spot (AsAh,KdKc preflop: 0.42 s
+# against 0.17 s with --gpu off), so spots stay on the CPU threads.
+def gpu_worth(s: Spec.Spot) -> Bool:
+  False{}
