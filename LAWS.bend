@@ -42,3 +42,10 @@ law tally_total:
   for +s: Spec.Spot
   for ok: {Spec.valid(s) == True{} : Bool}
   {Spec.counted(Eq.run(g, s), Spec.players(s), Spec.boards(s)) == True{} : Bool}
+
+# LAW 6: equity sums to exactly 100%: the players' shares add up to 2520 per board.
+law share_total:
+  for +g: Bool
+  for +s: Spec.Spot
+  for ok: {Spec.valid(s) == True{} : Bool}
+  {Spec.share_sum(Eq.run(g, s)) == Nat.mul(2520n, Spec.boards(s)) : Nat}

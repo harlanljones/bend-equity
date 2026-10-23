@@ -1547,3 +1547,6 @@ def share_total_live(+g: Bool, s: Spec.Spot, +ok: {Spec.valid(s) == True{} : Boo
 
 def Laws.tally_total(g, s, ok):
   tally_total_live(g, s, ok)
+
+def Laws.share_total(g, s, ok):
+  share_total_live(g, s, ok)
