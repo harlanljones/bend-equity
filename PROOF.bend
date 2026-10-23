@@ -1,6 +1,7 @@
 import Base
 import ./spec.bend as Spec
 import ./comb.bend as Comb
+import ./eval.bend as Eval
 import ./equity.bend as Eq
 import ./LAWS.bend as Laws
 
@@ -443,3 +444,206 @@ def Laws.board_avoids_known(known, k, i, c):
   +dk = Comb.deck(known)
   +n = Comb.deck_size(known)
   avoid(Spec.has(Comb.board(dk, n, k, i), c), Spec.has(dk, c), Spec.has(known, c), board_sub(dk, n, k, i, c), deck_out(known, c))
+
+# LAW 4
+# =====
+
+def or4_swap(a: Bool, b: Bool, c: Bool, d: Bool, -m: Bool) -> {(a || (b || (c || (d || m)))) == (c || (d || (a || (b || m)))) : Bool}:
+  match a b c d:
+    case True{} _ True{} _:
+      {==}
+    case True{} _ False{} True{}:
+      {==}
+    case True{} _ False{} False{}:
+      {==}
+    case False{} True{} True{} _:
+      {==}
+    case False{} True{} False{} True{}:
+      {==}
+    case False{} True{} False{} False{}:
+      {==}
+    case False{} False{} _ _:
+      {==}
+
+# The known cards of p, q and of q, p hold the same cards.
+def mem_swap(+px: Nat, +py: Nat, +qx: Nat, +qy: Nat, +b: List<&2, Nat>, +c: Nat) -> {Comb.mem(px <> py <> qx <> qy <> b, c) == Comb.mem(qx <> qy <> px <> py <> b, c) : Bool}:
+  or4_swap(Nat.is_eq(px, c), Nat.is_eq(py, c), Nat.is_eq(qx, c), Nat.is_eq(qy, c), Comb.mem(b, c))
+
+def deck_go_swap(n: Nat, +px: Nat, +py: Nat, +qx: Nat, +qy: Nat, +b: List<&2, Nat>, +acc: List<&2, Nat>) -> {Comb.deck.go(n, px <> py <> qx <> qy <> b, acc) == Comb.deck.go(n, qx <> qy <> px <> py <> b, acc) : List<&2, Nat>}:
+  match n:
+    case 0n:
+      {==}
+    case 1n++r:
+      %mem_swap(px, py, qx, qy, b, r) : {Comb.deck.go(r, px <> py <> qx <> qy <> b, Comb.deck.put(Comb.mem(px <> py <> qx <> qy <> b, r), r, acc)) == Comb.deck.go(r, qx <> qy <> px <> py <> b, Comb.deck.put(_, r, acc)) : List<&2, Nat>}
+      deck_go_swap(r, px, py, qx, qy, b, Comb.deck.put(Comb.mem(px <> py <> qx <> qy <> b, r), r, acc))
+
+def size_go_swap(n: Nat, +px: Nat, +py: Nat, +qx: Nat, +qy: Nat, +b: List<&2, Nat>) -> {Comb.deck_size.go(n, px <> py <> qx <> qy <> b) == Comb.deck_size.go(n, qx <> qy <> px <> py <> b) : Nat}:
+  match n:
+    case 0n:
+      {==}
+    case 1n++r:
+      %mem_swap(px, py, qx, qy, b, r) : {Nat.add(Comb.deck_size.one(Comb.mem(px <> py <> qx <> qy <> b, r)), Comb.deck_size.go(r, px <> py <> qx <> qy <> b)) == Nat.add(Comb.deck_size.one(_), Comb.deck_size.go(r, qx <> qy <> px <> py <> b)) : Nat}
+      %size_go_swap(r, px, py, qx, qy, b) : {Nat.add(Comb.deck_size.one(Comb.mem(px <> py <> qx <> qy <> b, r)), Comb.deck_size.go(r, px <> py <> qx <> qy <> b)) == Nat.add(Comb.deck_size.one(Comb.mem(px <> py <> qx <> qy <> b, r)), _) : Nat}
+      {==}
+
+# The spot q, p has the deck of the spot p, q.
+def ctx_swap(+px: Nat, +py: Nat, +qx: Nat, +qy: Nat, +b: List<&2, Nat>) -> {Eq.Ctx{[Spec.Hand{qx, qy}, Spec.Hand{px, py}], b, Comb.deck(px <> py <> qx <> qy <> b), Comb.deck_size(px <> py <> qx <> qy <> b), Nat.sub(5n, Spec.len(b)), Comb.binom(Comb.deck_size(px <> py <> qx <> qy <> b), Nat.sub(5n, Spec.len(b)))} == Eq.ctx(Spec.Spot{[Spec.Hand{qx, qy}, Spec.Hand{px, py}], b}) : Eq.Ctx}:
+  %deck_go_swap(52n, px, py, qx, qy, b, Nil{}) : {Eq.Ctx{[Spec.Hand{qx, qy}, Spec.Hand{px, py}], b, Comb.deck(px <> py <> qx <> qy <> b), Comb.deck_size(px <> py <> qx <> qy <> b), Nat.sub(5n, Spec.len(b)), Comb.binom(Comb.deck_size(px <> py <> qx <> qy <> b), Nat.sub(5n, Spec.len(b)))} == Eq.Ctx{[Spec.Hand{qx, qy}, Spec.Hand{px, py}], b, _, Comb.deck_size(qx <> qy <> px <> py <> b), Nat.sub(5n, Spec.len(b)), Comb.binom(Comb.deck_size(qx <> qy <> px <> py <> b), Nat.sub(5n, Spec.len(b)))} : Eq.Ctx}
+  %size_go_swap(52n, px, py, qx, qy, b) : {Eq.Ctx{[Spec.Hand{qx, qy}, Spec.Hand{px, py}], b, Comb.deck(px <> py <> qx <> qy <> b), Comb.deck_size(px <> py <> qx <> qy <> b), Nat.sub(5n, Spec.len(b)), Comb.binom(Comb.deck_size(px <> py <> qx <> qy <> b), Nat.sub(5n, Spec.len(b)))} == Eq.Ctx{[Spec.Hand{qx, qy}, Spec.Hand{px, py}], b, Comb.deck(px <> py <> qx <> qy <> b), _, Nat.sub(5n, Spec.len(b)), Comb.binom(_, Nat.sub(5n, Spec.len(b)))} : Eq.Ctx}
+  {==}
+
+def zero_max(x: Nat) -> {x == Nat.max(x, 0n) : Nat}:
+  match x:
+    case 0n:
+      {==}
+    case 1n+p:
+      {==}
+
+def max_comm(a: Nat, b: Nat) -> {Nat.max(a, b) == Nat.max(b, a) : Nat}:
+  match a b:
+    case 0n 0n:
+      {==}
+    case 0n 1n+q:
+      {==}
+    case 1n+p 0n:
+      {==}
+    case 1n+p 1n+q:
+      %max_comm(p, q) : {1n+Nat.max(p, q) == 1n+_ : Nat}
+      {==}
+
+def maxl2_comm(+a: Nat, +b: Nat) -> {Eq.maxl([a, b]) == Eq.maxl([b, a]) : Nat}:
+  %zero_max(b) : {Nat.max(a, _) == Nat.max(b, Nat.max(a, 0n)) : Nat}
+  %zero_max(a) : {Nat.max(a, b) == Nat.max(b, _) : Nat}
+  max_comm(a, b)
+
+def add01(u: Bool, v: Bool) -> {Nat.add(Eq.b2n(u), Nat.add(Eq.b2n(v), 0n)) == Nat.add(Eq.b2n(v), Nat.add(Eq.b2n(u), 0n)) : Nat}:
+  match u v:
+    case True{} True{}:
+      {==}
+    case True{} False{}:
+      {==}
+    case False{} True{}:
+      {==}
+    case False{} False{}:
+      {==}
+
+def cnt2_comm(+a: Nat, +b: Nat, +m: Nat) -> {Eq.cnt([a, b], m) == Eq.cnt([b, a], m) : Nat}:
+  add01(Nat.is_eq(a, m), Nat.is_eq(b, m))
+
+def tallies2(+a: Nat, +b: Nat, +m1: Nat, +m2: Nat, e: {m1 == m2 : Nat}) -> {Eq.tallies([a, b], m1, Nat.is_eq(Eq.cnt([a, b], m1), 1n), Nat.div(2520n, Eq.cnt([a, b], m1))) == Spec.swap2(Eq.tallies([b, a], m2, Nat.is_eq(Eq.cnt([b, a], m2), 1n), Nat.div(2520n, Eq.cnt([b, a], m2)))) : List<&2, Spec.Tally>}:
+  %e : {Eq.tallies([a, b], m1, Nat.is_eq(Eq.cnt([a, b], m1), 1n), Nat.div(2520n, Eq.cnt([a, b], m1))) == Spec.swap2(Eq.tallies([b, a], _, Nat.is_eq(Eq.cnt([b, a], _), 1n), Nat.div(2520n, Eq.cnt([b, a], _)))) : List<&2, Spec.Tally>}
+  %cnt2_comm(a, b, m1) : {Eq.tallies([a, b], m1, Nat.is_eq(Eq.cnt([a, b], m1), 1n), Nat.div(2520n, Eq.cnt([a, b], m1))) == Spec.swap2(Eq.tallies([b, a], m1, Nat.is_eq(_, 1n), Nat.div(2520n, _))) : List<&2, Spec.Tally>}
+  {==}
+
+# Judging two scores in the other order swaps the two tallies.
+def judge_swap(+a: Nat, +b: Nat) -> {Eq.judge([a, b]) == Spec.swap2(Eq.judge([b, a])) : List<&2, Spec.Tally>}:
+  tallies2(a, b, Eq.maxl([a, b]), Eq.maxl([b, a]), maxl2_comm(a, b))
+
+def at_go_swap(ok: Bool, +px: Nat, +py: Nat, +qx: Nat, +qy: Nat, +b: List<&2, Nat>, +dk: List<&2, Nat>, +n: Nat, +k: Nat, +j: Nat) -> {Spec.swap2(Eq.at.go(ok, [Spec.Hand{px, py}, Spec.Hand{qx, qy}], b, dk, n, k, j)) == Eq.at.go(ok, [Spec.Hand{qx, qy}, Spec.Hand{px, py}], b, dk, n, k, j) : List<&2, Spec.Tally>}:
+  match ok:
+    case True{}:
+      +full = Eq.cat(b, Comb.board(dk, n, k, j))
+      +sp = Eval.score7(px, py, full)
+      +sq = Eval.score7(qx, qy, full)
+      Equal.sym(List<&2, Spec.Tally>, Eq.judge([sq, sp]), Spec.swap2(Eq.judge([sp, sq])), judge_swap(sq, sp))
+    case False{}:
+      {==}
+
+# Nil or exactly two tallies.
+def two(ts: List<&2, Spec.Tally>) -> Bool:
+  match ts:
+    case Nil{}:
+      True{}
+    case Con{a, Nil{}}:
+      False{}
+    case Con{a, Con{b, Nil{}}}:
+      True{}
+    case Con{a, Con{b, Con{c, r}}}:
+      False{}
+
+def two_add(a: List<&2, Spec.Tally>, b: List<&2, Spec.Tally>, ea: {two(a) == True{} : Bool}, eb: {two(b) == True{} : Bool}) -> {two(Eq.add(a, b)) == True{} : Bool}:
+  match a b:
+    case Nil{} _:
+      eb
+    case Con{x, Nil{}} _:
+      Empty.absurd({two(Eq.add(Con{x, Nil{}}, b)) == True{} : Bool}, false_true(ea))
+    case Con{x, Con{y, Con{z, r}}} _:
+      Empty.absurd({two(Eq.add(Con{x, Con{y, Con{z, r}}}, b)) == True{} : Bool}, false_true(ea))
+    case Con{x, Con{y, Nil{}}} Nil{}:
+      {==}
+    case Con{x, Con{y, Nil{}}} Con{u, Nil{}}:
+      Empty.absurd({two(Eq.add(Con{x, Con{y, Nil{}}}, Con{u, Nil{}})) == True{} : Bool}, false_true(eb))
+    case Con{x, Con{y, Nil{}}} Con{u, Con{v, Nil{}}}:
+      {==}
+    case Con{x, Con{y, Nil{}}} Con{u, Con{v, Con{w, r}}}:
+      Empty.absurd({two(Eq.add(Con{x, Con{y, Nil{}}}, Con{u, Con{v, Con{w, r}}})) == True{} : Bool}, false_true(eb))
+
+def swap_add(a: List<&2, Spec.Tally>, b: List<&2, Spec.Tally>, ea: {two(a) == True{} : Bool}, eb: {two(b) == True{} : Bool}) -> {Eq.add(Spec.swap2(a), Spec.swap2(b)) == Spec.swap2(Eq.add(a, b)) : List<&2, Spec.Tally>}:
+  match a b:
+    case Nil{} _:
+      {==}
+    case Con{x, Nil{}} _:
+      Empty.absurd({Eq.add(Spec.swap2(Con{x, Nil{}}), Spec.swap2(b)) == Spec.swap2(Eq.add(Con{x, Nil{}}, b)) : List<&2, Spec.Tally>}, false_true(ea))
+    case Con{x, Con{y, Con{z, r}}} _:
+      Empty.absurd({Eq.add(Spec.swap2(Con{x, Con{y, Con{z, r}}}), Spec.swap2(b)) == Spec.swap2(Eq.add(Con{x, Con{y, Con{z, r}}}, b)) : List<&2, Spec.Tally>}, false_true(ea))
+    case Con{x, Con{y, Nil{}}} Nil{}:
+      {==}
+    case Con{x, Con{y, Nil{}}} Con{u, Nil{}}:
+      Empty.absurd({Eq.add(Spec.swap2(Con{x, Con{y, Nil{}}}), Spec.swap2(Con{u, Nil{}})) == Spec.swap2(Eq.add(Con{x, Con{y, Nil{}}}, Con{u, Nil{}})) : List<&2, Spec.Tally>}, false_true(eb))
+    case Con{x, Con{y, Nil{}}} Con{u, Con{v, Nil{}}}:
+      {==}
+    case Con{x, Con{y, Nil{}}} Con{u, Con{v, Con{w, r}}}:
+      Empty.absurd({Eq.add(Spec.swap2(Con{x, Con{y, Nil{}}}), Spec.swap2(Con{u, Con{v, Con{w, r}}})) == Spec.swap2(Eq.add(Con{x, Con{y, Nil{}}}, Con{u, Con{v, Con{w, r}}})) : List<&2, Spec.Tally>}, false_true(eb))
+
+def two_at(ok: Bool, +px: Nat, +py: Nat, +qx: Nat, +qy: Nat, +b: List<&2, Nat>, +dk: List<&2, Nat>, +n: Nat, +k: Nat, +j: Nat) -> {two(Eq.at.go(ok, [Spec.Hand{px, py}, Spec.Hand{qx, qy}], b, dk, n, k, j)) == True{} : Bool}:
+  match ok:
+    case True{}:
+      {==}
+    case False{}:
+      {==}
+
+def two_seq(m: Nat, +px: Nat, +py: Nat, +qx: Nat, +qy: Nat, +b: List<&2, Nat>, +dk: List<&2, Nat>, +n: Nat, +k: Nat, +t: Nat, +i: Nat) -> {two(Eq.seq(m, Eq.Ctx{[Spec.Hand{px, py}, Spec.Hand{qx, qy}], b, dk, n, k, t}, i)) == True{} : Bool}:
+  match m:
+    case 0n:
+      {==}
+    case 1n++r:
+      +x = {Eq.Ctx{[Spec.Hand{px, py}, Spec.Hand{qx, qy}], b, dk, n, k, t} : Eq.Ctx}
+      two_add(Eq.seq(r, x, i), Eq.at(x, Nat.add(r, i)), two_seq(r, px, py, qx, qy, b, dk, n, k, t, i), two_at(Nat.is_lt(Nat.add(r, i), t), px, py, qx, qy, b, dk, n, k, Nat.add(r, i)))
+
+def seq_swap(m: Nat, +px: Nat, +py: Nat, +qx: Nat, +qy: Nat, +b: List<&2, Nat>, +dk: List<&2, Nat>, +n: Nat, +k: Nat, +t: Nat, +i: Nat) -> {Spec.swap2(Eq.seq(m, Eq.Ctx{[Spec.Hand{px, py}, Spec.Hand{qx, qy}], b, dk, n, k, t}, i)) == Eq.seq(m, Eq.Ctx{[Spec.Hand{qx, qy}, Spec.Hand{px, py}], b, dk, n, k, t}, i) : List<&2, Spec.Tally>}:
+  match m:
+    case 0n:
+      {==}
+    case 1n++r:
+      +x = {Eq.Ctx{[Spec.Hand{px, py}, Spec.Hand{qx, qy}], b, dk, n, k, t} : Eq.Ctx}
+      +y = {Eq.Ctx{[Spec.Hand{qx, qy}, Spec.Hand{px, py}], b, dk, n, k, t} : Eq.Ctx}
+      %seq_swap(r, px, py, qx, qy, b, dk, n, k, t, i) : {Spec.swap2(Eq.add(Eq.seq(r, x, i), Eq.at(x, Nat.add(r, i)))) == Eq.add(_, Eq.at(y, Nat.add(r, i))) : List<&2, Spec.Tally>}
+      %at_go_swap(Nat.is_lt(Nat.add(r, i), t), px, py, qx, qy, b, dk, n, k, Nat.add(r, i)) : {Spec.swap2(Eq.add(Eq.seq(r, x, i), Eq.at(x, Nat.add(r, i)))) == Eq.add(Spec.swap2(Eq.seq(r, x, i)), _) : List<&2, Spec.Tally>}
+      Equal.sym(List<&2, Spec.Tally>, Eq.add(Spec.swap2(Eq.seq(r, x, i)), Spec.swap2(Eq.at(x, Nat.add(r, i)))), Spec.swap2(Eq.add(Eq.seq(r, x, i), Eq.at(x, Nat.add(r, i)))), swap_add(Eq.seq(r, x, i), Eq.at(x, Nat.add(r, i)), two_seq(r, px, py, qx, qy, b, dk, n, k, t, i), two_at(Nat.is_lt(Nat.add(r, i), t), px, py, qx, qy, b, dk, n, k, Nat.add(r, i))))
+
+def tree_swap(+d: Nat, +c: Nat, +px: Nat, +py: Nat, +qx: Nat, +qy: Nat, +b: List<&2, Nat>, +dk: List<&2, Nat>, +n: Nat, +k: Nat, +t: Nat, +i: Nat) -> {Eq.tree(d, c, Eq.Ctx{[Spec.Hand{qx, qy}, Spec.Hand{px, py}], b, dk, n, k, t}, i) == Spec.swap2(Eq.tree(d, c, Eq.Ctx{[Spec.Hand{px, py}, Spec.Hand{qx, qy}], b, dk, n, k, t}, i)) : List<&2, Spec.Tally>}:
+  +x = {Eq.Ctx{[Spec.Hand{px, py}, Spec.Hand{qx, qy}], b, dk, n, k, t} : Eq.Ctx}
+  +y = {Eq.Ctx{[Spec.Hand{qx, qy}, Spec.Hand{px, py}], b, dk, n, k, t} : Eq.Ctx}
+  +m = Comb.pow2(Nat.add(d, c))
+  %Equal.sym(List<&2, Spec.Tally>, Eq.tree(d, c, y, i), Eq.seq(m, y, i), Laws.tree_is_seq(d, c, y, i)) : {_ == Spec.swap2(Eq.tree(d, c, x, i)) : List<&2, Spec.Tally>}
+  %Equal.sym(List<&2, Spec.Tally>, Eq.tree(d, c, x, i), Eq.seq(m, x, i), Laws.tree_is_seq(d, c, x, i)) : {Eq.seq(m, y, i) == Spec.swap2(_) : List<&2, Spec.Tally>}
+  Equal.sym(List<&2, Spec.Tally>, Spec.swap2(Eq.seq(m, x, i)), Eq.seq(m, y, i), seq_swap(m, px, py, qx, qy, b, dk, n, k, t, i))
+
+# run on q, p, with the deck rewritten to that of p, q, is a tree over the same range.
+def run_swap(+px: Nat, +py: Nat, +qx: Nat, +qy: Nat, +b: List<&2, Nat>) -> {Eq.run.cpu(Eq.Ctx{[Spec.Hand{qx, qy}, Spec.Hand{px, py}], b, Comb.deck(px <> py <> qx <> qy <> b), Comb.deck_size(px <> py <> qx <> qy <> b), Nat.sub(5n, Spec.len(b)), Comb.binom(Comb.deck_size(px <> py <> qx <> qy <> b), Nat.sub(5n, Spec.len(b)))}) == Spec.swap2(Eq.run.cpu(Eq.ctx(Spec.Spot{[Spec.Hand{px, py}, Spec.Hand{qx, qy}], b}))) : List<&2, Spec.Tally>}:
+  +known = {px <> py <> qx <> qy <> b : List<&2, Nat>}
+  +n = Comb.deck_size(known)
+  +k = Nat.sub(5n, Spec.len(b))
+  +t = Comb.binom(n, k)
+  +dd = Comb.clog2(t)
+  +d = Nat.min(dd, 14n)
+  tree_swap(d, Nat.sub(dd, d), px, py, qx, qy, b, Comb.deck(known), n, k, t, 0n)
+
+def Laws.heads_up_swap(g, p, q, b):
+  match g p q:
+    case True{} Spec.Hand{+px, +py} Spec.Hand{+qx, +qy}:
+      %ctx_swap(px, py, qx, qy, b) : {Eq.run.gpu(_) == Spec.swap2(Eq.run.gpu(Eq.ctx(Spec.Spot{[Spec.Hand{px, py}, Spec.Hand{qx, qy}], b}))) : List<&2, Spec.Tally>}
+      run_swap(px, py, qx, qy, b)
+    case False{} Spec.Hand{+px, +py} Spec.Hand{+qx, +qy}:
+      %ctx_swap(px, py, qx, qy, b) : {Eq.run.cpu(_) == Spec.swap2(Eq.run.cpu(Eq.ctx(Spec.Spot{[Spec.Hand{px, py}, Spec.Hand{qx, qy}], b}))) : List<&2, Spec.Tally>}
+      run_swap(px, py, qx, qy, b)

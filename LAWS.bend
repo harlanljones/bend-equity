@@ -27,3 +27,11 @@ law board_avoids_known:
   for +i: Nat
   for +c: Nat
   {(Spec.has(Comb.board(Comb.deck(known), Comb.deck_size(known), k, i), c) && Spec.has(known, c)) == False{} : Bool}
+
+# LAW 4: seat order is irrelevant: swapping two players swaps their tallies, nothing else changes.
+law heads_up_swap:
+  for +g: Bool
+  for +p: Spec.Hand
+  for +q: Spec.Hand
+  for +b: List<&2, Nat>
+  {Eq.run(g, Spec.heads_up(q, p, b)) == Spec.swap2(Eq.run(g, Spec.heads_up(p, q, b))) : List<&2, Spec.Tally>}
