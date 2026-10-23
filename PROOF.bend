@@ -650,12 +650,11 @@ def Laws.heads_up_swap(g, p, q, b):
 
 # LAW 5 and LAW 6
 # ===============
-# LAWS.bend states both with an erased hypothesis (`for -ok`), and Bend
-# 2.0.38 lets no live proof use an erased one (a rewrite with ok, or ok as a
-# live argument, is refused: "expected : -ok, observed : ok"). So neither law
-# is in LAWS.bend yet. tally_total_live and share_total_live below prove the
-# same claims with ok live; with `for ok:` in place of `for -ok:`, each law is
-# its lemma applied to (g, s, ok).
+# Both laws take `ok` live (`for ok:`): Bend 2.0.38 lets no live proof use an
+# erased hypothesis (a rewrite with ok, or ok as a live argument, is refused:
+# "expected : -ok, observed : ok"), and neither claim holds without it.
+# tally_total_live and share_total_live below are the proofs; each law is its
+# lemma applied to (g, s, ok).
 
 # Arithmetic
 # ----------
@@ -1545,3 +1544,6 @@ def share_total_live(+g: Bool, s: Spec.Spot, +ok: {Spec.valid(s) == True{} : Boo
       %Equal.sym(List<&2, Spec.Tally>, Eq.run(g, Spec.Spot{hs, b}), Eq.seq(t, x, 0n), run_seq(g, hs, b)) : {Spec.share_sum(_) == Nat.mul(2520n, Comb.binom(Nat.sub(52n, Spec.len(kn)), k)) : Nat}
       %dse : {Spec.share_sum(Eq.seq(t, x, 0n)) == Nat.mul(2520n, Comb.binom(_, k)) : Nat}
       Equal.trans(Nat, Spec.share_sum(Eq.seq(t, x, 0n)), Nat.mul(t, 2520n), Nat.mul(2520n, t), share_seq(t, hs, b, Comb.deck(kn), n, k, t, le_refl(t), and_l(va, vb, eab), and_r(va, vb, eab)), mul_comm(t, 2520n))
+
+def Laws.tally_total(g, s, ok):
+  tally_total_live(g, s, ok)

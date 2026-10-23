@@ -35,3 +35,10 @@ law heads_up_swap:
   for +q: Spec.Hand
   for +b: List<&2, Nat>
   {Eq.run(g, Spec.heads_up(q, p, b)) == Spec.swap2(Eq.run(g, Spec.heads_up(p, q, b))) : List<&2, Spec.Tally>}
+
+# LAW 5: every board is counted exactly once for every player: win + tie + lose == boards.
+law tally_total:
+  for +g: Bool
+  for +s: Spec.Spot
+  for ok: {Spec.valid(s) == True{} : Bool}
+  {Spec.counted(Eq.run(g, s), Spec.players(s), Spec.boards(s)) == True{} : Bool}
