@@ -327,3 +327,119 @@ def Laws.board_well_formed(known, k, i):
   +dk = Comb.deck(known)
   +n = Comb.deck_size(known)
   and_intro(Spec.ascending(Comb.board(dk, n, k, i)), Spec.all_lt(Comb.board(dk, n, k, i), 52n), board_asc(dk, n, k, i, deck_asc(known)), board_lt(dk, n, k, i, 52n, deck_lt(known)))
+
+# LAW 3
+# =====
+
+# a implies b.
+def imp(a: Bool, b: Bool) -> Bool:
+  match a:
+    case True{}:
+      b
+    case False{}:
+      True{}
+
+def eq_of_is_eq(a: Nat, b: Nat, e: {Nat.is_eq(a, b) == True{} : Bool}) -> {a == b : Nat}:
+  match a b:
+    case 0n 0n:
+      {==}
+    case 0n 1n+q:
+      Empty.absurd({0n == 1n+q : Nat}, false_true(e))
+    case 1n+p 0n:
+      Empty.absurd({1n+p == 0n : Nat}, false_true(e))
+    case 1n+p 1n+q:
+      %eq_of_is_eq(p, q, e) : {1n+p == 1n+_ : Nat}
+      {==}
+
+def mem_has(xs: List<&2, Nat>, +c: Nat) -> {Comb.mem(xs, c) == Spec.has(xs, c) : Bool}:
+  match xs:
+    case Nil{}:
+      {==}
+    case Con{+h, t}:
+      %mem_has(t, c) : {Comb.mem(Con{h, t}, c) == (Nat.is_eq(h, c) || _) : Bool}
+      {==}
+
+def or_imp(e0: Bool, x: Bool, y: Bool, ih: {imp(x, y) == True{} : Bool}) -> {imp(e0 || x, e0 || y) == True{} : Bool}:
+  match e0:
+    case True{}:
+      {==}
+    case False{}:
+      ih
+
+def imp_true(x: Bool) -> {imp(x, True{}) == True{} : Bool}:
+  match x:
+    case True{}:
+      {==}
+    case False{}:
+      {==}
+
+def imp_or_r(x: Bool, e0: Bool, y: Bool, ih: {imp(x, y) == True{} : Bool}) -> {imp(x, e0 || y) == True{} : Bool}:
+  match e0:
+    case True{}:
+      imp_true(x)
+    case False{}:
+      ih
+
+def board_sub.step(tk: Bool, +h: Nat, +t: List<&2, Nat>, +m: Nat, +j: Nat, +i: Nat, +b: Nat, +c: Nat, e1: {imp(Spec.has(Comb.board(t, m, j, i), c), Spec.has(t, c)) == True{} : Bool}, e2: {imp(Spec.has(Comb.board(t, m, 1n+j, Nat.sub(i, b)), c), Spec.has(t, c)) == True{} : Bool}) -> {imp(Spec.has(Comb.board.put(tk, h, Comb.board(t, m, Comb.board.pick(tk, j, 1n+j), Comb.board.pick(tk, i, Nat.sub(i, b)))), c), Spec.has(Con{h, t}, c)) == True{} : Bool}:
+  match tk:
+    case True{}:
+      or_imp(Nat.is_eq(h, c), Spec.has(Comb.board(t, m, j, i), c), Spec.has(t, c), e1)
+    case False{}:
+      imp_or_r(Spec.has(Comb.board(t, m, 1n+j, Nat.sub(i, b)), c), Nat.is_eq(h, c), Spec.has(t, c), e2)
+
+# A board holds only cards of its deck.
+def board_sub(xs: List<&2, Nat>, +n: Nat, +k: Nat, +i: Nat, +c: Nat) -> {imp(Spec.has(Comb.board(xs, n, k, i), c), Spec.has(xs, c)) == True{} : Bool}:
+  match xs n k:
+    case Nil{} _ _:
+      {==}
+    case Con{h, t} 0n _:
+      {==}
+    case Con{h, t} 1n+m 0n:
+      {==}
+    case Con{+h, +t} 1n++m 1n++j:
+      +b = Comb.binom(m, j)
+      board_sub.step(Nat.is_lt(i, b), h, t, m, j, i, b, c, board_sub(t, m, j, i, c), board_sub(t, m, 1n+j, Nat.sub(i, b), c))
+
+def deck_put_out.hit(e0: Bool, +p: Nat, +c: Nat, +known: List<&2, Nat>, acc: List<&2, Nat>, ee: {Nat.is_eq(p, c) == e0 : Bool}, ek: {Comb.mem(known, p) == False{} : Bool}, e: {imp(Spec.has(acc, c), Spec.not_(Comb.mem(known, c))) == True{} : Bool}) -> {imp(e0 || Spec.has(acc, c), Spec.not_(Comb.mem(known, c))) == True{} : Bool}:
+  match e0:
+    case True{}:
+      %eq_of_is_eq(p, c, ee) : {Spec.not_(Comb.mem(known, _)) == True{} : Bool}
+      %Equal.sym(Bool, Comb.mem(known, p), False{}, ek) : {Spec.not_(_) == True{} : Bool}
+      {==}
+    case False{}:
+      e
+
+def deck_put_out(kn: Bool, +p: Nat, +acc: List<&2, Nat>, +c: Nat, +known: List<&2, Nat>, ek: {Comb.mem(known, p) == kn : Bool}, e: {imp(Spec.has(acc, c), Spec.not_(Comb.mem(known, c))) == True{} : Bool}) -> {imp(Spec.has(Comb.deck.put(kn, p, acc), c), Spec.not_(Comb.mem(known, c))) == True{} : Bool}:
+  match kn:
+    case True{}:
+      e
+    case False{}:
+      deck_put_out.hit(Nat.is_eq(p, c), p, c, known, acc, {==}, ek, e)
+
+def deck_go_out(n: Nat, +known: List<&2, Nat>, +acc: List<&2, Nat>, +c: Nat, e: {imp(Spec.has(acc, c), Spec.not_(Comb.mem(known, c))) == True{} : Bool}) -> {imp(Spec.has(Comb.deck.go(n, known, acc), c), Spec.not_(Comb.mem(known, c))) == True{} : Bool}:
+  match n:
+    case 0n:
+      e
+    case 1n++p:
+      deck_go_out(p, known, Comb.deck.put(Comb.mem(known, p), p, acc), c, deck_put_out(Comb.mem(known, p), p, acc, c, known, {==}, e))
+
+# A deck holds no known card.
+def deck_out(+known: List<&2, Nat>, +c: Nat) -> {imp(Spec.has(Comb.deck(known), c), Spec.not_(Spec.has(known, c))) == True{} : Bool}:
+  %mem_has(known, c) : {imp(Spec.has(Comb.deck(known), c), Spec.not_(_)) == True{} : Bool}
+  deck_go_out(52n, known, Nil{}, c, {==})
+
+def avoid(a: Bool, b: Bool, d: Bool, e1: {imp(a, b) == True{} : Bool}, e2: {imp(b, Spec.not_(d)) == True{} : Bool}) -> {(a && d) == False{} : Bool}:
+  match a b d:
+    case False{} _ _:
+      {==}
+    case True{} False{} _:
+      Empty.absurd({(True{} && d) == False{} : Bool}, false_true(e1))
+    case True{} True{} False{}:
+      {==}
+    case True{} True{} True{}:
+      Empty.absurd({(True{} && True{}) == False{} : Bool}, false_true(e2))
+
+def Laws.board_avoids_known(known, k, i, c):
+  +dk = Comb.deck(known)
+  +n = Comb.deck_size(known)
+  avoid(Spec.has(Comb.board(dk, n, k, i), c), Spec.has(dk, c), Spec.has(known, c), board_sub(dk, n, k, i, c), deck_out(known, c))

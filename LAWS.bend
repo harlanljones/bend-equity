@@ -19,3 +19,11 @@ law board_well_formed:
   for +k: Nat
   for +i: Nat
   {Spec.well_formed(Comb.board(Comb.deck(known), Comb.deck_size(known), k, i)) == True{} : Bool}
+
+# LAW 3: no enumerated board contains a known card (a hole card or a dealt board card).
+law board_avoids_known:
+  for +known: List<&2, Nat>
+  for +k: Nat
+  for +i: Nat
+  for +c: Nat
+  {(Spec.has(Comb.board(Comb.deck(known), Comb.deck_size(known), k, i), c) && Spec.has(known, c)) == False{} : Bool}
